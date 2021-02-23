@@ -37,24 +37,28 @@ public class JewelryStats {
       String price = fields[2];
       float rating = Float.parseFloat(fields[6]);
       Float priceInFl = null;
+      //Parse price only if known
       if(!price.equals("unknown")){
         priceInFl = Float.parseFloat(price);
       }
       MapWritable valMap = new MapWritable();
       valMap.put(new Text("price"), new FloatWritable(priceInFl));
       valMap.put(new Text("rating"), new FloatWritable(rating));
+      //Write as {productId: {price: 100, rating: 4.5}}
       ctx.write(new Text(productId), valMap);
     }
   }
 
   public static class JewelryStatsReducer extends Reducer<Text, MapWritable, Text, MapWritable> {
     public void reduce(Text key, Iterable<MapWritable> values, Context ctx) throws IOException, InterruptedException{
+      //Read as {productId: [{price: 100, rating: 4.5}, {price: 80, rating: 3.75}, ...]}
       float sum = 0;
       int length = 0;
       float ratingSum = 0;
       int ratingLen = 0;
 
       for (MapWritable val : values) {
+        //Calculate total price
         FloatWritable priceW = (FloatWritable)val.get("price");
         Float price = priceW.get();
         if(price != null){
@@ -62,11 +66,14 @@ public class JewelryStats {
           length++;
         }
 
+        //Calculate total rating
         FloatWritable ratingW = (FloatWritable)val.get("rating");
         float rating = ratingW.get();
         ratingSum += rating;
         ratingLen++;
       }
+
+      //Calculate average price & rating
       float averagePrice = sum / length;
       float averageRating = ratingSum / ratingLen;
 
@@ -74,6 +81,7 @@ public class JewelryStats {
       valMap.put(new Text("average-price"), new FloatWritable(averagePrice));
       valMap.put(new Text("average-rating"), new FloatWritable(averageRating));
 
+      //Write as {productId: {average-price: 210.5, average-rating: 4.25}}
       ctx.write(key, valMap);
     }
   }
